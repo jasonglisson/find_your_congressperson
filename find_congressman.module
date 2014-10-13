@@ -8,7 +8,7 @@
 function find_congressman_menu() {
 	$items = array();
 	$items['admin/config/content/find_congressman'] = array(
-		'title' => '',
+		'title' => 'Find Your Congressman',
 		'description' => 'Configuration for Find Your Congressman module. Includes Sunlight Foundation API Key.',
 		'page callback' => 'drupal_get_form',
 		'page arguments' => array('find_congressman_form'),
@@ -38,15 +38,45 @@ function _page_find_congressman() {
  * @see find_congressman_menu()
  */
 function find_congressman_form($form, &$form_state) {
-  $form['find_congressman'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Sunlight Foundation API Key'),
-    '#default_value' => variable_get('find_congressman', 1),
-    '#size' => 100,
-    '#maxlength' => 100,
-    '#description' => t('If you don\'t have an API key, please go to this URL to get one: http://sunlightfoundation.com/api/accounts/register/'),
-    '#required' => TRUE,
-  );
+	$form = array();
+	$form['find_congressman'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Sunlight Foundation API Key'),
+		'#default_value' => variable_get('find_congressman', 1),
+		'#size' => 100,
+		'#maxlength' => 100,
+		'#description' => t('If you don\'t have an API key, please go to this URL to get one: http://sunlightfoundation.com/api/accounts/register/'),
+		'#required' => TRUE,
+	);
+/*
+	$form['find_congressman_checks'] = array(
+		'#type' => 'item', 
+		'#title' => t('Which features would you like to display?'),
+		'#description' => t('Select all of the features that you\'d like to display on the "Find Your Congressman" page.'),
+		'#required' => FALSE,
+	);
+*/
+	$form['congressman_features'] = array(
+		'#type' => 'checkboxes',
+		'#title' => t('Which features would you like to display?'),
+		'#description' => t('Select all of the features that you\'d like to display on the "Find Your Congressman" page.'),		
+		'#options' => drupal_map_assoc(array(
+			t('Chamber'),
+			t('District'),	
+			t('Facebook Page Link'),
+			t('Fax Number'),												
+			t('Image'),
+			t('Link to Website Contact Form'),
+			t('Name'),				
+			t('Phone Number'),
+			t('State'),
+			t('Title'),	
+			t('Top State Name'),			
+			t('Twitter Page Link'),
+			t('Youtube Page Link'),																	
+		)),
+		'#default_value' => variable_get('congressman_features', 1),
+	);
   return system_settings_form($form);
 }	
 
@@ -93,11 +123,37 @@ if ($search_results === NULL) die('Error parsing json');
 		$congressmen = $search_results->results;
 	
 		$content = "<div class=\"congress-wrap row\">";
-	
+		$congress_checks = variable_get('congressman_features');	
 		$content .= '<ul class="large-12 columns">';
-			$content .=  '<h4>' . $congressmen[0]->state_name . '</h4>';
+			if ($congress_checks['Top State Name']){
+				$content .=  '<h4>' . $congressmen[0]->state_name . '</h4>';
+			}			
 			foreach ($congressmen as $congress) {
-				$content .=  '<li><a href="' . $congress->website . '">' . $congress->first_name .' '. $congress->last_name . "</a></li>";
+				if ($congress_checks['Name']){
+					$content .=  '<li class="congressman"><div><a href="' . $congress->website . '" target="_blank">' . $congress->first_name .' '. $congress->last_name . "</a></div>";
+				}					
+				if ($congress_checks['Image']){
+					$content .= '<img src="http://theunitedstates.io/images/congress/225x275/' . $congress->bioguide_id . '.jpg">';				
+				}	
+				if ($congress_checks['District']){
+					$content .= '<div>District: ' . $congress->district . '</div>';					
+				}							
+				if ($congress_checks['Chamber']){
+					$content .= '<div>Chamber: ' . $congress->chamber . '</div>';					
+				}				
+				if ($congress_checks['Facebook Page Link']){
+					$content .= '<div>Facebook: <a href="https://www.facebook.com/' . $congress->facebook_id . '" target="_blank">Facebook Page</a></div>';					
+				}					
+				if ($congress_checks['Phone Number']){
+					$content .= '<div>Phone: ' . $congress->phone . '</div>';					
+				}
+				if ($congress_checks['Fax Number']){
+					$content .= '<div>Fax: ' . $congress->fax . '</div>';					
+				}					
+				if ($congress_checks['Link to Website Contact Form']){
+					$content .= '<div><a href="' . $congress->contact_form . '" target="_blank">Contact Form</a></div>';					
+				}								
+				$content .= '</li>';
 			}
 		$content .= '</ul>';
 		
