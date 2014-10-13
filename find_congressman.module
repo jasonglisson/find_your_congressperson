@@ -61,13 +61,15 @@ function find_congressman_form($form, &$form_state) {
 		'#title' => t('Which features would you like to display?'),
 		'#description' => t('Select all of the features that you\'d like to display on the "Find Your Congressman" page.'),		
 		'#options' => drupal_map_assoc(array(
+			t('Affiliated Party'),
 			t('Chamber'),
 			t('District'),	
 			t('Facebook Page Link'),
 			t('Fax Number'),												
 			t('Image'),
 			t('Link to Website Contact Form'),
-			t('Name'),				
+			t('Name'),			
+			t('Open Congress Email'),	
 			t('Phone Number'),
 			t('State'),
 			t('Title'),	
@@ -113,8 +115,7 @@ if ($search_results === NULL) die('Error parsing json');
 
 	if (empty($search_results->results)) {
 	
-		$content = "<div class=\"congress-wrap row\">";
-		$content .= '<div class="large-12 columns alert-box alert">Please Check your zip code and make sure it is a 5 digit US Postal Zip.</div>';
+		$content = '<div class="large-12 columns alert-box alert">Please Check your zip code and make sure it is a 5 digit US Postal Zip.</div>';
 		$content .= '<br><br><br><br>';
 		return $content;	
 		
@@ -135,12 +136,18 @@ if ($search_results === NULL) die('Error parsing json');
 				if ($congress_checks['Image']){
 					$content .= '<img src="http://theunitedstates.io/images/congress/225x275/' . $congress->bioguide_id . '.jpg">';				
 				}	
+				if ($congress_checks['Affiliated Party']){
+					$content .= '<div>Party: ' . $congress->party . '</div>';				
+				}				
 				if ($congress_checks['District']){
 					$content .= '<div>District: ' . $congress->district . '</div>';					
 				}							
 				if ($congress_checks['Chamber']){
 					$content .= '<div>Chamber: ' . $congress->chamber . '</div>';					
-				}				
+				}
+				if ($congress_checks['Open Congress Email']){
+					$content .= '<div>Open Congress Email: ' . $congress->oc_email . '</div>';					
+				}									
 				if ($congress_checks['Facebook Page Link']){
 					$content .= '<div>Facebook: <a href="https://www.facebook.com/' . $congress->facebook_id . '" target="_blank">Facebook Page</a></div>';					
 				}					
