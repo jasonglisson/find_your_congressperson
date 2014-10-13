@@ -1,0 +1,7 @@
+name = Find Your Congressman
+description = Enable this module to activate "Find Your Congressman" features. Built on Sunlight Foundation API - Congress
+core = 7.x
+package = NCHLA
+version = "7.x-1.0-dev"
+; NEW LINE
+configure = admin/config/content/find_congressman

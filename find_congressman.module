@@ -1,0 +1,137 @@
+<?php 
+
+
+/**
+ * Implements hook_menu().
+ */
+ 
+function find_congressman_menu() {
+	$items = array();
+	$items['admin/config/content/find_congressman'] = array(
+		'title' => '',
+		'description' => 'Configuration for Find Your Congressman module. Includes Sunlight Foundation API Key.',
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('find_congressman_form'),
+		'access arguments' => array('access administration pages'),
+		'type' => MENU_NORMAL_ITEM,
+	);
+ 
+	$items['find'] = array(
+		'title' => 'Example Page',
+		'page callback' => 'mymodule_abc_view',
+/* 		'access arguments' => array('access content'), */
+		'type' => MENU_SUGGESTED_ITEM,
+	);  
+  
+  return $items;
+} 
+
+/**
+ * Page callback: Current posts settings
+ *
+ * @see find_congressman_menu()
+ */
+function find_congressman_form($form, &$form_state) {
+  $form['find_congressman'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Sunlight Foundation API Key'),
+    '#default_value' => variable_get('find_congressman', 1),
+    '#size' => 100,
+    '#maxlength' => 100,
+    '#description' => t('If you don\'t have an API key, please go to this URL to get one: http://sunlightfoundation.com/api/accounts/register/'),
+    '#required' => TRUE,
+  );
+  return system_settings_form($form);
+}	
+
+/**
+ * custom html block
+ * @return string
+ */
+function find_congressman_contents() {
+
+$apikey = variable_get('find_congressman',1);
+
+$zipcode = $_GET["zip"];
+
+// construct the query with our apikey and the query we want to make
+$endpoint = 'https://congress.api.sunlightfoundation.com/legislators/locate?zip='. $zipcode .'&apikey=' . $apikey;
+
+// setup curl to make a call to the endpoint
+$session = curl_init($endpoint);
+
+// indicates that we want the response back
+curl_setopt($session, CURLOPT_RETURNTRANSFER, true);
+
+// exec curl and get the data back
+$data = curl_exec($session);
+
+// remember to close the curl session once we are finished retrieveing the data
+curl_close($session);
+
+// decode the json data to make it easier to parse the php
+$search_results = json_decode($data);
+if ($search_results === NULL) die('Error parsing json');
+
+/* print_r($search_results); */
+
+	if (empty($search_results->results)) {
+	
+		$content = "<div class=\"congress-wrap row\">";
+		$content .= '<div class="large-12 columns alert-box alert">Please Check your zip code and make sure it is a 5 digit US Postal Zip.</div>';
+		$content .= '<br><br><br><br>';
+		return $content;	
+		
+	} else {
+	// play with the data!
+		$congressmen = $search_results->results;
+	
+		$content = "<div class=\"congress-wrap row\">";
+	
+		$content .= '<ul class="large-12 columns">';
+			$content .=  '<h4>' . $congressmen[0]->state_name . '</h4>';
+			foreach ($congressmen as $congress) {
+				$content .=  '<li><a href="' . $congress->website . '">' . $congress->first_name .' '. $congress->last_name . "</a></li>";
+			}
+		$content .= '</ul>';
+		
+		return $content;
+	}
+	
+}
+
+/**
+ * Implements hook_block_info().
+ */
+function find_congressman_block_info() {
+  $blocks['find_congressman_block_1'] = array(
+    'info' => t('Find Your Congressman 2'),
+    'cache' => DRUPAL_NO_CACHE,
+  );
+  $blocks['find_congressman_block_2'] = array(
+    'info' => t('Find Your Congressman Zip'),
+    'cache' => DRUPAL_NO_CACHE,
+  );  
+  return $blocks;
+}
+ 
+/**
+ * Implements hook_block_view().
+ */
+function find_congressman_block_view($delta = '') {
+  $block = array();
+  switch ($delta) {
+    case 'find_congressman_block_1':
+      $block['subject'] = t('Find Your Congressman');
+      $block['content'] = find_congressman_contents();
+      break;
+    case 'find_congressman_block_2': 
+      $block['subject'] = t('Find Your Congressman Zip');
+      $block['content'] = t('zip field goes here');      
+  }
+  return $block;
+}
+
+ 
+
+?>
