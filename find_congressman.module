@@ -16,15 +16,21 @@ function find_congressman_menu() {
 		'type' => MENU_NORMAL_ITEM,
 	);
  
-	$items['find'] = array(
-		'title' => 'Example Page',
-		'page callback' => 'mymodule_abc_view',
-/* 		'access arguments' => array('access content'), */
+	$items['find_congressman'] = array(
+		'title' => 'Find Your Congressman',
+		'page callback' => '_page_find_congressman',
+		'access callback' => TRUE,
 		'type' => MENU_SUGGESTED_ITEM,
 	);  
   
   return $items;
 } 
+
+function _page_find_congressman() {
+  return array(
+    '#markup' => '<p>Hello world</p>'
+  );
+}
 
 /**
  * Page callback: Current posts settings
@@ -100,6 +106,17 @@ if ($search_results === NULL) die('Error parsing json');
 	
 }
 
+function find_congressman_zip() {
+	$content = "<div class=\"find-zip row\">";
+	
+		$content .= '<ul class="large-12 columns">';
+			$content .=  '<h2>Test</h2>';
+		$content .= '</ul>';
+		
+		return $content;
+
+}
+
 /**
  * Implements hook_block_info().
  */
@@ -126,12 +143,11 @@ function find_congressman_block_view($delta = '') {
       $block['content'] = find_congressman_contents();
       break;
     case 'find_congressman_block_2': 
-      $block['subject'] = t('Find Your Congressman Zip');
-      $block['content'] = t('zip field goes here');      
+      $block['subject'] = t('Find Your Congressman');
+      $block['content'] = find_congressman_zip();      
   }
   return $block;
 }
 
- 
 
 ?>
