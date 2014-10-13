@@ -28,7 +28,7 @@ function find_congressman_menu() {
 
 function _page_find_congressman() {
   return array(
-    '#markup' => '<p>Hello world</p>'
+    '#markup' => find_congressman_contents()
   );
 }
 
@@ -107,11 +107,16 @@ if ($search_results === NULL) die('Error parsing json');
 }
 
 function find_congressman_zip() {
+
+	drupal_add_js(drupal_get_path('module', 'find_congressman') .'/js/find-congressman.js');
+	
 	$content = "<div class=\"find-zip row\">";
 	
-		$content .= '<ul class="large-12 columns">';
-			$content .=  '<h2>Test</h2>';
-		$content .= '</ul>';
+		$content .= '<div class="columns">';
+			$content .=  '<div class="subheader">Please enter a 5 digit zipcode</div>';  		
+			$content .=  '<input id="zipcode-value" class="zipcode-field" type="text" name="zip" maxlength="5">'; 
+			$content .=  '<input type="submit" value="Search" class="zip-button">'; 						
+		$content .= '</div>';
 		
 		return $content;
 
@@ -148,6 +153,5 @@ function find_congressman_block_view($delta = '') {
   }
   return $block;
 }
-
 
 ?>
