@@ -8,20 +8,27 @@
 function find_congressperson_menu() {
 	$items = array();
 	$items['admin/config/content/find_congressperson'] = array(
-		'title' => 'Find Your congressperson',
-		'description' => 'Configuration for Find Your congressperson module. Includes Sunlight Foundation API Key.',
+		'title' => 'Find Your Congressperson',
+		'description' => 'Configuration for Find Your Congressperson module. Includes Sunlight Foundation API Key and Google Geocode API Key fields.',
 		'page callback' => 'drupal_get_form',
 		'page arguments' => array('find_congressperson_form'),
 		'access arguments' => array('access administration pages'),
 		'type' => MENU_NORMAL_ITEM,
 	);
  
-	$items['find_congressperson'] = array(
+	$items['find_congressperson_zip'] = array(
 		'title' => 'Find Your Congressperson',
 		'page callback' => '_page_find_congressperson',
 		'access callback' => TRUE,
 		'type' => MENU_SUGGESTED_ITEM,
 	);  
+ 
+	$items['find_congressperson_address'] = array(
+		'title' => 'Find Your Congressperson',
+		'page callback' => '_page_find_congressperson_address',
+		'access callback' => TRUE,
+		'type' => MENU_SUGGESTED_ITEM,
+	); 
   
   return $items;
 } 
@@ -29,6 +36,12 @@ function find_congressperson_menu() {
 function _page_find_congressperson() {
   return array(
     '#markup' => find_congressperson_contents()
+  );
+}
+
+function _page_find_congressperson_address() {
+  return array(
+    '#markup' => find_congressperson_address_contents()
   );
 }
 
@@ -42,24 +55,27 @@ function find_congressperson_form($form, &$form_state) {
 	$form['find_congressperson'] = array(
 		'#type' => 'textfield',
 		'#title' => t('Sunlight Foundation API Key'),
-		'#default_value' => variable_get('find_congressperson', 1),
+		'#default_value' => variable_get('find_congressperson'),
 		'#size' => 100,
 		'#maxlength' => 100,
-		'#description' => t('If you don\'t have an API key, please go to this URL to get one: http://sunlightfoundation.com/api/accounts/register/'),
+		'#description' => t('If you don\'t have an API key, please go to this URL to get one: <a href="http://sunlightfoundation.com/api/accounts/register/" target="blank">http://sunlightfoundation.com/api/accounts/register/</a>'),
 		'#required' => TRUE,
 	);
-/*
-	$form['find_congressperson_checks'] = array(
-		'#type' => 'item', 
-		'#title' => t('Which features would you like to display?'),
-		'#description' => t('Select all of the features that you\'d like to display on the "Find Your congressperson" page.'),
-		'#required' => FALSE,
+
+	$form['find_by_address'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Google Geocoding API Key'),
+		'#default_value' => variable_get('find_by_address'),
+		'#size' => 100,
+		'#maxlength' => 100,
+		'#description' => t('This is for looking up the Congressperson by Address. If you don\'t have a Google Geocoding API key, please follow these directions:<br><ol><li>Visit the APIs console at <a href="https://code.google.com/apis/console" target="blank">https://code.google.com/apis/console</a> and log in with your Google Account.</li><li>Click the Services link from the left-hand menu in the APIs Console, then activate the Geocoding API service.</li><li>Once the service has been activated, your API key is available from the API Access page, in the Simple API Access section. Geocoding API applications use the Key for server apps.</li></ol>'),
+		'#required' => TRUE,
 	);
-*/
+
 	$form['congressperson_features'] = array(
 		'#type' => 'checkboxes',
 		'#title' => t('Which features would you like to display?'),
-		'#description' => t('Select all of the features that you\'d like to display on the "Find Your congressperson" page.'),		
+		'#description' => t('Select all of the features that you\'d like to display on the "Find Your Congressperson" page.'),		
 		'#options' => drupal_map_assoc(array(
 			t('Affiliated Party'),
 			t('Chamber'),
@@ -77,7 +93,7 @@ function find_congressperson_form($form, &$form_state) {
 			t('Twitter Page Link'),
 			t('Youtube Page Link'),																	
 		)),
-		'#default_value' => variable_get('congressperson_features', 1),
+		'#default_value' => variable_get('congressperson_features'),
 	);
   return system_settings_form($form);
 }	
@@ -88,37 +104,35 @@ function find_congressperson_form($form, &$form_state) {
  */
 function find_congressperson_contents() {
 
-$apikey = variable_get('find_congressperson',1);
-
-$zipcode = $_GET["zip"];
-
-// construct the query with our apikey and the query we want to make
-$endpoint = 'https://congress.api.sunlightfoundation.com/legislators/locate?zip='. $zipcode .'&apikey=' . $apikey;
-
-// setup curl to make a call to the endpoint
-$session = curl_init($endpoint);
-
-// indicates that we want the response back
-curl_setopt($session, CURLOPT_RETURNTRANSFER, true);
-
-// exec curl and get the data back
-$data = curl_exec($session);
-
-// remember to close the curl session once we are finished retrieveing the data
-curl_close($session);
-
-// decode the json data to make it easier to parse the php
-$search_results = json_decode($data);
-if ($search_results === NULL) die('Error parsing json');
-
-/* print_r($search_results); */
-
+	$apikey = variable_get('find_congressperson');
+	
+	$zipcode = isset($_GET["zip"]) ? $_GET["zip"] : 0;
+	
+	// construct the query with our apikey and the query we want to make
+	$endpoint = 'https://congress.api.sunlightfoundation.com/legislators/locate?zip='. $zipcode .'&apikey=' . $apikey;
+	
+	// setup curl to make a call to the endpoint
+	$session = curl_init($endpoint);
+	
+	// indicates that we want the response back
+	curl_setopt($session, CURLOPT_RETURNTRANSFER, true);
+	
+	// exec curl and get the data back
+	$data = curl_exec($session);
+	
+	// remember to close the curl session once we are finished retrieveing the data
+	curl_close($session);
+	
+	// decode the json data to make it easier to parse the php
+	$search_results = json_decode($data);
+	if ($search_results === NULL) die('Error parsing json = Endpoint Error');
+	
 	if (empty($search_results->results)) {
 	
-		$content = '<div class="large-12 columns alert-box alert">Please Check your zip code and make sure it is a 5 digit US Postal Zip.</div>';
+		$content = '<div class="large-12 columns alert-box alert">Please check your zip code and make sure it is a 5 digit US Postal Zip Code.</div>';
 		$content .= '<br><br><br><br>';
 		return $content;	
-		
+				
 	} else {
 	// play with the data!
 		$congressperson = $search_results->results;
@@ -165,6 +179,100 @@ if ($search_results === NULL) die('Error parsing json');
 		$content .= '</ul>';
 		
 		return $content;
+	}	
+}
+
+function find_congressperson_address_contents() {
+
+	$geoapikey = variable_get('find_by_address');
+	$apikey = variable_get('find_congressperson');
+	
+	$address = urlencode(isset($_GET["address"]) ? $_GET["address"] : 0);
+	
+	// construct the query with our apikey and the query we want to make
+	$geoendpoint = 'https://maps.googleapis.com/maps/api/geocode/json?address='. $address .'&key=' .$geoapikey;
+	
+	// setup curl to make a call to the endpoint
+	$session2 = curl_init($geoendpoint);
+	
+	// indicates that we want the response back
+	curl_setopt($session2, CURLOPT_RETURNTRANSFER, true);
+	
+	// exec curl and get the data back
+	$data2 = curl_exec($session2);
+	
+	// remember to close the curl session once we are finished retrieveing the data
+	curl_close($session2);
+	
+	// decode the json data to make it easier to parse the php
+	$geo_results = json_decode($data2);
+	if ($geo_results === NULL) die('Error parsing json = Geo Endpoint Error');
+	
+	$lat = $geo_results->results[0]->geometry->location->lat;
+	$lng = $geo_results->results[0]->geometry->location->lng;
+	
+	// Lat/Long API Endpoint
+	$latendpoint = 'https://congress.api.sunlightfoundation.com/legislators/locate?latitude='. $lat .'&longitude='. $lng .'&apikey=' . $apikey;
+	$session3 = curl_init($latendpoint);
+	curl_setopt($session3, CURLOPT_RETURNTRANSFER, true);
+	$data3 = curl_exec($session3);
+	curl_close($session3);
+	
+	$lat_results = json_decode($data3);
+	if ($lat_results === NULL) die('Error parsing json = Lat/Long Endpoint Error');
+
+	if (empty($lat_results->results)) {
+	
+		$content = '<div class="large-12 columns alert-box alert">Please check your address and make sure it is correctly formatted.</div>';
+		$content .= '<br><br><br><br>';
+		return $content;
+						
+	} else {
+		$addressresults = $lat_results->results;
+		
+		$content = "<div class=\"congress-wrap row\">";
+		$addy_checks = variable_get('congressperson_features');	
+			$content .= '<ul class="large-12 columns">';
+			if ($addy_checks['Top State Name']){
+				$content .=  '<h4>' . $addressresults[0]->state_name . '</h4>';
+			}
+			foreach ($addressresults as $address) {
+				if ($addy_checks['Name']){
+					$content .=  '<li class="congressperson"><div><a href="' . $address->website . '" target="_blank">' . $address->first_name .' '. $address->last_name . "</a></div>";
+				}										
+				if ($addy_checks['Image']){
+					$content .= '<img src="http://theunitedstates.io/images/congress/225x275/' . $address->bioguide_id . '.jpg">';				
+				}	
+				if ($addy_checks['Affiliated Party']){
+					$content .= '<div>Party: ' . $address->party . '</div>';				
+				}				
+				if ($addy_checks['District']){
+					$content .= '<div>District: ' . $address->district . '</div>';					
+				}							
+				if ($addy_checks['Chamber']){
+					$content .= '<div>Chamber: ' . $address->chamber . '</div>';					
+				}
+				if ($addy_checks['Open Congress Email']){
+					$content .= '<div>Open Congress Email: ' . $address->oc_email . '</div>';					
+				}									
+				if ($addy_checks['Facebook Page Link']){
+					$content .= '<div>Facebook: <a href="https://www.facebook.com/' . $address->facebook_id . '" target="_blank">Facebook Page</a></div>';					
+				}					
+				if ($addy_checks['Phone Number']){
+					$content .= '<div>Phone: ' . $address->phone . '</div>';					
+				}
+				if ($addy_checks['Fax Number']){
+					$content .= '<div>Fax: ' . $address->fax . '</div>';					
+				}					
+				if ($addy_checks['Link to Website Contact Form']){
+					$content .= '<div><a href="' . $address->contact_form . '" target="_blank">Contact Form</a></div>';					
+				}								
+				$content .= '</li>';
+			}
+			
+		$content .= '</ul>';
+		$content .= '</div>';
+		return $content;			
 	}
 	
 }
@@ -182,7 +290,26 @@ function find_congressperson_zip() {
 		$content .= '</div>';
 		
 		return $content;
+}
 
+function find_congressperson_address() {
+
+	drupal_add_js(drupal_get_path('module', 'find_congressperson') .'/js/find-congressperson.js');
+	
+	$zipcode = isset($_GET["zip"]) ? $_GET["zip"] : 0;
+	
+	$content = "<div class=\"find-zip row\">";
+	
+		$content .= '<div class="columns large-6">';
+			$content .=  '<div class="subheader">Please enter your address</div>';  		
+			$content .=  '<input id="address-value" class="address-field large-12 columns" placeholder="Address" type="text" name="address" maxlength="200">';
+			$content .=  '<input id="city-value" class="city-field large-12 columns" placeholder="City" type="text" name="city" maxlength="100">'; 			 
+			$content .=  '<input id="state-value" class="state-field large-1 columns" placeholder="State" type="text" name="state" maxlength="2">'; 
+			$content .=  '<input id="zipcode-value" class="zipcode-field large-2 columns" placeholder="Zip" value="'. $zipcode .'" type="text" name="zip" maxlength="5">'; 						
+			$content .=  '<input type="submit" value="Search" class="address-button large-3 columns">'; 						
+		$content .= '</div>';
+		
+		return $content;
 }
 
 /**
@@ -190,9 +317,13 @@ function find_congressperson_zip() {
  */
 function find_congressperson_block_info() {
   $blocks['find_congressperson_block_1'] = array(
-    'info' => t('Find Your congressperson'),
+    'info' => t('Find Your Congressperson Zip'),
     'cache' => DRUPAL_NO_CACHE,
   ); 
+  $blocks['find_congressperson_block_2'] = array(
+    'info' => t('Find Your Congressperson Full Address'),
+    'cache' => DRUPAL_NO_CACHE,
+  );   
   return $blocks;
 }
  
@@ -204,7 +335,12 @@ function find_congressperson_block_view($delta = '') {
   switch ($delta) {
     case 'find_congressperson_block_1': 
       $block['subject'] = t('Find Your Congressperson');
-      $block['content'] = find_congressperson_zip();      
+      $block['content'] = find_congressperson_zip();
+      break;    
+    case 'find_congressperson_block_2': 
+      $block['subject'] = t('Find Your Congressperson by Address');
+      $block['content'] = find_congressperson_address();
+      break;         
   }
   return $block;
 }
