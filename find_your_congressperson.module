@@ -173,7 +173,13 @@ function find_congressperson_contents() {
 				}					
 				if ($congress_checks['Link to Website Contact Form']){
 					$content .= '<div><a href="' . $congress->contact_form . '" target="_blank">Contact Form</a></div>';					
-				}								
+				}
+				if ($congress_checks['Youtube Page Link']){
+					$content .= '<div><a href="https://www.youtube.com/' . $congress->youtube_id . '" target="_blank">YouTube</a></div>';					
+				}
+				if ($congress_checks['Twitter Page Link']){
+					$content .= '<div><a href="https://twitter.com/' . $congress->twitter_id . '" target="_blank">Twitter</a></div>';					
+				}												
 				$content .= '</li>';
 			}
 		$content .= '</ul>';
@@ -235,6 +241,7 @@ function find_congressperson_address_contents() {
 			$content .= '<ul class="large-12 columns">';
 			if ($addy_checks['Top State Name']){
 				$content .=  '<h4>' . $addressresults[0]->state_name . '</h4>';
+				$content .=  '<h4>' . $addressresults[0]->district . '</h4>';				
 			}
 			foreach ($addressresults as $address) {
 				if ($addy_checks['Name']){
@@ -266,7 +273,13 @@ function find_congressperson_address_contents() {
 				}					
 				if ($addy_checks['Link to Website Contact Form']){
 					$content .= '<div><a href="' . $address->contact_form . '" target="_blank">Contact Form</a></div>';					
-				}								
+				}
+				if ($addy_checks['Youtube Page Link']){
+					$content .= '<div><a href="https://www.youtube.com/' . $address->youtube_id . '" target="_blank">Youtube</a></div>';					
+				}
+				if ($addy_checks['Twitter Page Link']){
+					$content .= '<div><a href="https://twitter.com/' . $address->twitter_id . '" target="_blank">Twitter</a></div>';					
+				}																
 				$content .= '</li>';
 			}
 			
