@@ -18,4 +18,13 @@ jQuery(function() {
 		return false;
 	});
 
+	jQuery('.name-search-button').click(function() {
+		var firstname = jQuery('#firstname-value').val();
+		var lastname = jQuery('#lastname-value').val();						
+		var namelink = "find_congressperson_name?firstname=" + firstname + "&lastname=" + lastname;	
+		window.location.href = namelink;
+		return false;
+	});	
+	
+
 });

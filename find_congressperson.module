@@ -29,6 +29,20 @@ function find_congressperson_menu() {
 		'access callback' => TRUE,
 		'type' => MENU_SUGGESTED_ITEM,
 	); 
+
+	$items['find_congressperson_name'] = array(
+		'title' => 'Find Your Congressperson',
+		'page callback' => '_page_find_congressperson_name',
+		'access callback' => TRUE,
+		'type' => MENU_SUGGESTED_ITEM,
+	); 
+  
+	$items['congressperson'] = array(
+		'title' => 'Congressperson',
+		'page callback' => '_page_congressperson',
+		'access callback' => TRUE,
+		'type' => MENU_SUGGESTED_ITEM,
+	);   
   
   return $items;
 } 
@@ -42,6 +56,18 @@ function _page_find_congressperson() {
 function _page_find_congressperson_address() {
   return array(
     '#markup' => find_congressperson_address_contents()
+  );
+}
+
+function _page_find_congressperson_name() {
+  return array(
+    '#markup' => find_congressperson_name_contents()
+  );
+}
+
+function _page_congressperson() {
+  return array(
+    '#markup' => congressperson()
   );
 }
 
@@ -88,13 +114,45 @@ function find_congressperson_form($form, &$form_state) {
 			t('Open Congress Email'),	
 			t('Phone Number'),
 			t('State'),
-			t('Title'),	
-			t('Top State Name'),			
+			t('Title'),				
 			t('Twitter Page Link'),
 			t('Youtube Page Link'),																	
 		)),
 		'#default_value' => variable_get('congressperson_features'),
 	);
+	$form['congressperson_tweets'] = array(
+		'#type' => 'fieldset',
+		'#title' => t('Twitter API'),
+		'#description' => t('This is for showing recent Tweets by a Congressperson. <br>If you don\'t have an API key, please go to this URL to get one: <a href="https://apps.twitter.com/" target="_blank">https://apps.twitter.com/</a>'),	
+		'#default_value' => $congressperson_tweets, 				
+		'#collapsible' => TRUE,
+		'#collapsed' => FALSE, 		
+		'#tree' => TRUE,
+	);
+	$form['congressperson_tweets']['oauth'] = array(
+	    '#type' => 'textfield',
+	    '#title' => t('OAuth Access Token'),
+		'#default_value' => variable_get('oauth'),	    	    	    
+		'#required' => FALSE,
+	);
+	$form['congressperson_tweets']['secret'] = array(
+	    '#type' => 'textfield',
+	    '#title' => t('OAuth Access Token Secret'),
+		'#default_value' => variable_get('secret'),
+		'#required' => FALSE,	
+	);
+	$form['congressperson_tweets']['key'] = array(
+	    '#type' => 'textfield',
+	    '#title' => t('Consumer Key'), 
+		'#default_value' => $node->key,
+		'#required' => FALSE,	
+	);	
+	$form['congressperson_tweets']['consumer'] = array(
+	    '#type' => 'textfield',
+	    '#title' => t('Consumer Secret'),
+		'#required' => FALSE,		
+	);		
+
   return system_settings_form($form);
 }	
 
@@ -102,6 +160,8 @@ function find_congressperson_form($form, &$form_state) {
  * custom html block
  * @return string
  */
+ 
+// Search results content page for zipcode search
 function find_congressperson_contents() {
 
 	$apikey = variable_get('find_congressperson');
@@ -136,16 +196,15 @@ function find_congressperson_contents() {
 	} else {
 	// play with the data!
 		$congressperson = $search_results->results;
+
+		drupal_set_title(t($congressperson[0]->state_name));
 	
 		$content = "<div class=\"congress-wrap row\">";
 		$congress_checks = variable_get('congressperson_features');	
-		$content .= '<ul class="large-12 columns">';
-			if ($congress_checks['Top State Name']){
-				$content .=  '<h4>' . $congressperson[0]->state_name . '</h4>';
-			}			
+		$content .= '<ul class="large-12 columns">';		
 			foreach ($congressperson as $congress) {
 				if ($congress_checks['Name']){
-					$content .=  '<li class="congressperson"><div><a href="' . $congress->website . '" target="_blank">' . $congress->first_name .' '. $congress->last_name . "</a></div>";
+					$content .=  '<li class="congressperson"><div><a href="/congressperson?first_name=' . $congress->first_name . '&last_name='. $congress->last_name .'&bioguide_id=' . $congress->bioguide_id .'">' . $congress->first_name .' '. $congress->last_name . "</a></div>";
 				}					
 				if ($congress_checks['Image']){
 					$content .= '<img src="http://theunitedstates.io/images/congress/225x275/' . $congress->bioguide_id . '.jpg">';				
@@ -154,8 +213,10 @@ function find_congressperson_contents() {
 					$content .= '<div>Party: ' . $congress->party . '</div>';				
 				}				
 				if ($congress_checks['District']){
-					$content .= '<div>District: ' . $congress->district . '</div>';					
-				}							
+					if (isset($address->district)) {
+						$content .= '<div>District: ' . $address->district . '</div>';
+					}
+				}								
 				if ($congress_checks['Chamber']){
 					$content .= '<div>Chamber: ' . $congress->chamber . '</div>';					
 				}
@@ -173,7 +234,13 @@ function find_congressperson_contents() {
 				}					
 				if ($congress_checks['Link to Website Contact Form']){
 					$content .= '<div><a href="' . $congress->contact_form . '" target="_blank">Contact Form</a></div>';					
-				}								
+				}
+				if ($congress_checks['Youtube Page Link']){
+					$content .= '<div><a href="https://www.youtube.com/' . $congress->youtube_id . '" target="_blank">YouTube</a></div>';					
+				}
+				if ($congress_checks['Twitter Page Link']){
+					$content .= '<div><a href="https://twitter.com/' . $congress->twitter_id . '" target="_blank">Twitter</a></div>';					
+				}												
 				$content .= '</li>';
 			}
 		$content .= '</ul>';
@@ -182,11 +249,12 @@ function find_congressperson_contents() {
 	}	
 }
 
+// Search results content page for address search
 function find_congressperson_address_contents() {
 
 	$geoapikey = variable_get('find_by_address');
 	$apikey = variable_get('find_congressperson');
-	
+
 	$address = urlencode(isset($_GET["address"]) ? $_GET["address"] : 0);
 	
 	// construct the query with our apikey and the query we want to make
@@ -233,13 +301,20 @@ function find_congressperson_address_contents() {
 		$content = "<div class=\"congress-wrap row\">";
 		$addy_checks = variable_get('congressperson_features');	
 			$content .= '<ul class="large-12 columns">';
-			if ($addy_checks['Top State Name']){
-				$content .=  '<h4>' . $addressresults[0]->state_name . '</h4>';
-			}
 			foreach ($addressresults as $address) {
+/*
 				if ($addy_checks['Name']){
 					$content .=  '<li class="congressperson"><div><a href="' . $address->website . '" target="_blank">' . $address->first_name .' '. $address->last_name . "</a></div>";
-				}										
+				}	
+*/		
+				if (isset($address->district)) {
+					$district = $address->district;
+					drupal_set_title(t($address->state_name . ' ( ' . $district . ' )'));					
+				}	
+		       	       
+				if ($addy_checks['Name']){
+					$content .=  '<li class="congressperson"><div><a href="/congressperson?first_name=' . $address->first_name . '&last_name='. $address->last_name .'&bioguide_id=' . $address->bioguide_id .'">' . $address->first_name .' '. $address->last_name . "</a></div>";
+				}								
 				if ($addy_checks['Image']){
 					$content .= '<img src="http://theunitedstates.io/images/congress/225x275/' . $address->bioguide_id . '.jpg">';				
 				}	
@@ -247,8 +322,10 @@ function find_congressperson_address_contents() {
 					$content .= '<div>Party: ' . $address->party . '</div>';				
 				}				
 				if ($addy_checks['District']){
-					$content .= '<div>District: ' . $address->district . '</div>';					
-				}							
+					if (isset($address->district)) {
+						$content .= '<div>District: ' . $address->district . '</div>';
+					}
+				}											
 				if ($addy_checks['Chamber']){
 					$content .= '<div>Chamber: ' . $address->chamber . '</div>';					
 				}
@@ -266,7 +343,13 @@ function find_congressperson_address_contents() {
 				}					
 				if ($addy_checks['Link to Website Contact Form']){
 					$content .= '<div><a href="' . $address->contact_form . '" target="_blank">Contact Form</a></div>';					
-				}								
+				}
+				if ($addy_checks['Youtube Page Link']){
+					$content .= '<div><a href="https://www.youtube.com/' . $address->youtube_id . '" target="_blank">Youtube</a></div>';					
+				}
+				if ($addy_checks['Twitter Page Link']){
+					$content .= '<div><a href="https://twitter.com/' . $address->twitter_id . '" target="_blank">Twitter</a></div>';					
+				}																
 				$content .= '</li>';
 			}
 			
@@ -277,6 +360,73 @@ function find_congressperson_address_contents() {
 	
 }
 
+// Search results content page for address search
+function find_congressperson_name_contents() {
+	
+	$firstname = isset($_GET["firstname"]) ? $_GET["firstname"] : 0;
+	$lastname = isset($_GET["lastname"]) ? $_GET["lastname"] : 0;
+
+	drupal_set_title(t($firstname . ' ' . $lastname));
+
+	$apikey = variable_get('find_congressperson');
+	
+	// construct the query with our apikey and the query we want to make
+	$endpoint = 'https://congress.api.sunlightfoundation.com/legislators?first_name=' . $firstname . '&last_name='. $lastname .'&apikey=' . $apikey;
+	
+	// setup curl to make a call to the endpoint
+	$session = curl_init($endpoint);
+	
+	// indicates that we want the response back
+	curl_setopt($session, CURLOPT_RETURNTRANSFER, true);
+	
+	// exec curl and get the data back
+	$data = curl_exec($session);
+	
+	// remember to close the curl session once we are finished retrieveing the data
+	curl_close($session);
+	
+	// decode the json data to make it easier to parse the php
+	$search_results = json_decode($data);
+	if ($search_results === NULL) die('Error parsing json = Endpoint Error');
+	
+	if (empty($search_results->results)) {
+	
+		$content = '<div class="large-12 columns alert-box alert">Please check the name of the congressperson you are looking for. They may go by a different name or their full name instead of a nickname.</div>';
+		$content .= '<br><br><br><br>';
+		return $content;	
+				
+	} else {
+	// play with the data!
+		$congressperson = $search_results->results;
+	
+		$content = "<div class=\"congress-wrap row\">";
+		$congress_checks = variable_get('congressperson_features');	
+		$content .= '<ul class="large-12 columns">';			
+			foreach ($congressperson as $congress) {				
+				$content .= '<img src="http://theunitedstates.io/images/congress/225x275/' . $congress->bioguide_id . '.jpg">';				
+				$content .=  '<div>' . $congress->state_name . '</div>';			
+				$content .= '<div>Party: ' . $congress->party . '</div>';						
+				if (isset($congress->district)) {
+					$content .= '<div>District: ' . $congress->district . '</div>';
+				}						
+				$content .= '<div>Chamber: ' . $congress->chamber . '</div>';					
+				$content .= '<div>Open Congress Email: ' . $congress->oc_email . '</div>';													
+				$content .= '<div>Facebook: <a href="https://www.facebook.com/' . $congress->facebook_id . '" target="_blank">Facebook Page</a></div>';
+				$content .= '<div>Phone: ' . $congress->phone . '</div>';					
+				$content .= '<div>Fax: ' . $congress->fax . '</div>';								
+				$content .= '<div><a href="' . $congress->contact_form . '" target="_blank">Contact Form</a></div>';					
+				$content .= '<div><a href="https://www.youtube.com/' . $congress->youtube_id . '" target="_blank">YouTube</a></div>';
+				$content .= '<div><a href="https://twitter.com/' . $congress->twitter_id . '" target="_blank">Twitter</a></div>';				
+				$content .= '</li>';
+			}
+		$content .= '</ul>';
+		
+		return $content;
+	}		
+	
+}
+
+// Search block for a zip search
 function find_congressperson_zip() {
 
 	drupal_add_js(drupal_get_path('module', 'find_congressperson') .'/js/find-congressperson.js');
@@ -292,39 +442,129 @@ function find_congressperson_zip() {
 		return $content;
 }
 
+// Search block for a address search
 function find_congressperson_address() {
 
 	drupal_add_js(drupal_get_path('module', 'find_congressperson') .'/js/find-congressperson.js');
 	
-	$zipcode = isset($_GET["zip"]) ? $_GET["zip"] : 0;
+	$zipcode = isset($_GET["zip"]) ? $_GET["zip"] : '';
 	
 	$content = "<div class=\"find-zip row\">";
 	
-		$content .= '<div class="columns large-6">';
-			$content .=  '<div class="subheader">Please enter your address</div>';  		
+		$content .= '<div class="columns left large-6">';
+			$content .=  '<div class="subheader">Please enter your address to find your congressperson.</div>';  		
 			$content .=  '<input id="address-value" class="address-field large-12 columns" placeholder="Address" type="text" name="address" maxlength="200">';
 			$content .=  '<input id="city-value" class="city-field large-12 columns" placeholder="City" type="text" name="city" maxlength="100">'; 			 
 			$content .=  '<input id="state-value" class="state-field large-1 columns" placeholder="State" type="text" name="state" maxlength="2">'; 
 			$content .=  '<input id="zipcode-value" class="zipcode-field large-2 columns" placeholder="Zip" value="'. $zipcode .'" type="text" name="zip" maxlength="5">'; 						
 			$content .=  '<input type="submit" value="Search" class="address-button large-3 columns">'; 						
 		$content .= '</div>';
+	$content .= '</div>';		
+		return $content;
+}
+
+// Search block for a name search
+function find_congressperson_name() {
+
+/* 	drupal_add_js(drupal_get_path('module', 'find_congressperson') .'/js/find-congressperson.js'); */
+	
+	$content = "<div class=\"find-name row\">";
+	
+		$content .= '<div class="columns left large-6">';
+			$content .=  '<div class="subheader">Please enter the name of the Senator or Representative you are looking for. The member\'s first name may or may not be the name they are usually called.</div>';  		
+			$content .=  '<input id="firstname-value" class="firstname-field large-12 columns" placeholder="First Name" type="text" name="firstname" maxlength="200">';
+			$content .=  '<input id="lastname-value" class="lastname-field large-12 columns" placeholder="Last Name" type="text" name="lastname" maxlength="100">'; 
+			$content .=  '<input type="submit" value="Search" class="name-search-button large-3 columns">'; 						
+		$content .= '</div>';
+	$content .= '</div>';		
+		return $content;
+}
+
+
+// This is the individual Congressperson page
+function congressperson() {
+	
+	$cong_firstname = isset($_GET["first_name"]) ? $_GET["first_name"] : 0;
+	$cong_lastname = isset($_GET["last_name"]) ? $_GET["last_name"] : 0;
+	$cong_bioguide = isset($_GET["bioguide_id"]) ? $_GET["bioguide_id"] : 0;
+
+	drupal_set_title(t($cong_firstname . ' ' . $cong_lastname));
+
+	$apikey = variable_get('find_congressperson');
+	
+	// construct the query with our apikey and the query we want to make
+	$endpoint = 'https://congress.api.sunlightfoundation.com/legislators?first_name=' . $cong_firstname . '&last_name='. $cong_lastname .'&bioguide_id=' . $cong_bioguide .'&apikey=' . $apikey;
+	
+	// setup curl to make a call to the endpoint
+	$session = curl_init($endpoint);
+	
+	// indicates that we want the response back
+	curl_setopt($session, CURLOPT_RETURNTRANSFER, true);
+	
+	// exec curl and get the data back
+	$data = curl_exec($session);
+	
+	// remember to close the curl session once we are finished retrieveing the data
+	curl_close($session);
+	
+	// decode the json data to make it easier to parse the php
+	$search_results = json_decode($data);
+	if ($search_results === NULL) die('Error parsing json = Endpoint Error');
+	
+	if (empty($search_results->results)) {
+	
+		$content = '<div class="large-12 columns alert-box alert">Please check your zip code and make sure it is a 5 digit US Postal Zip Code.</div>';
+		$content .= '<br><br><br><br>';
+		return $content;	
+				
+	} else {
+	// play with the data!
+		$congressperson = $search_results->results;
+	
+		$content = "<div class=\"congress-wrap row\">";
+		$congress_checks = variable_get('congressperson_features');	
+		$content .= '<ul class="large-12 columns">';			
+			foreach ($congressperson as $congress) {				
+				$content .= '<img src="http://theunitedstates.io/images/congress/225x275/' . $congress->bioguide_id . '.jpg">';				
+				$content .=  '<div>' . $congress->state_name . '</div>';			
+				$content .= '<div>Party: ' . $congress->party . '</div>';						
+				if (isset($congress->district)) {
+					$content .= '<div>District: ' . $congress->district . '</div>';
+				}						
+				$content .= '<div>Chamber: ' . $congress->chamber . '</div>';					
+				$content .= '<div>Open Congress Email: ' . $congress->oc_email . '</div>';													
+				$content .= '<div>Facebook: <a href="https://www.facebook.com/' . $congress->facebook_id . '" target="_blank">Facebook Page</a></div>';
+				$content .= '<div>Phone: ' . $congress->phone . '</div>';					
+				$content .= '<div>Fax: ' . $congress->fax . '</div>';								
+				$content .= '<div><a href="' . $congress->contact_form . '" target="_blank">Contact Form</a></div>';					
+				$content .= '<div><a href="https://www.youtube.com/' . $congress->youtube_id . '" target="_blank">YouTube</a></div>';
+				$content .= '<div><a href="https://twitter.com/' . $congress->twitter_id . '" target="_blank">Twitter</a></div>';				
+				$content .= '</li>';
+			}
+		$content .= '</ul>';
 		
 		return $content;
+	}		
+	
 }
 
 /**
  * Implements hook_block_info().
  */
 function find_congressperson_block_info() {
-  $blocks['find_congressperson_block_1'] = array(
-    'info' => t('Find Your Congressperson Zip'),
-    'cache' => DRUPAL_NO_CACHE,
-  ); 
-  $blocks['find_congressperson_block_2'] = array(
-    'info' => t('Find Your Congressperson Full Address'),
-    'cache' => DRUPAL_NO_CACHE,
-  );   
-  return $blocks;
+	$blocks['find_congressperson_block_1'] = array(
+		'info' => t('Find Your Congressperson Zip'),
+		'cache' => DRUPAL_NO_CACHE,
+	); 
+	$blocks['find_congressperson_block_2'] = array(
+		'info' => t('Find Your Congressperson Full Address'),
+		'cache' => DRUPAL_NO_CACHE,
+	);   
+	$blocks['find_congressperson_block_3'] = array(
+		'info' => t('Find Your Congressperson By Full Name'),
+		'cache' => DRUPAL_NO_CACHE,
+	); 	
+	return $blocks;
 }
  
 /**
@@ -340,7 +580,11 @@ function find_congressperson_block_view($delta = '') {
     case 'find_congressperson_block_2': 
       $block['subject'] = t('Find Your Congressperson by Address');
       $block['content'] = find_congressperson_address();
-      break;         
+      break;  
+    case 'find_congressperson_block_3': 
+      $block['subject'] = t('Find Your Congressperson by Name');
+      $block['content'] = find_congressperson_name();
+      break;              
   }
   return $block;
 }
