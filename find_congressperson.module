@@ -274,7 +274,15 @@ function find_congressperson_address_contents() {
 	
 	// decode the json data to make it easier to parse the php
 	$geo_results = json_decode($data2);
-	if ($geo_results === NULL) die('Error parsing json = Geo Endpoint Error');
+/* 	if ($geo_results === NULL) die('Error parsing json = Geo Endpoint Error'); */
+	
+	if ($geo_results->status === 'ZERO_RESULTS') {
+	
+		$content = '<div class="large-12 columns alert-box alert">Please check your address and make sure it is correctly formatted. All fields must be completed.</div>';
+		$content .= '<br><br><br><br>';
+		return $content;
+						
+	}
 	
 	$lat = $geo_results->results[0]->geometry->location->lat;
 	$lng = $geo_results->results[0]->geometry->location->lng;
@@ -298,25 +306,33 @@ function find_congressperson_address_contents() {
 	} else {
 		$addressresults = $lat_results->results;
 		
-		$content = "<div class=\"congress-wrap row\">";
+		$content = '<span class="congress-state stateface stateface-'. strtolower($addressresults[0]->state) .'" style="font-family: StateFaceRegular;"></span>'; 
+		
+		$content .= '<div class=\"congress-wrap row\">';
+ 
 		$addy_checks = variable_get('congressperson_features');	
 			$content .= '<ul class="large-12 columns">';
+			
 			foreach ($addressresults as $address) {
+			
+			$congressface = $address->facebook_id;
+			
 /*
 				if ($addy_checks['Name']){
 					$content .=  '<li class="congressperson"><div><a href="' . $address->website . '" target="_blank">' . $address->first_name .' '. $address->last_name . "</a></div>";
 				}	
 */		
+								
 				if (isset($address->district)) {
 					$district = $address->district;
 					drupal_set_title(t($address->state_name . ' ( ' . $district . ' )'));					
-				}	
+				}	     
 		       	       
 				if ($addy_checks['Name']){
 					$content .=  '<li class="congressperson"><div><a href="/congressperson?first_name=' . $address->first_name . '&last_name='. $address->last_name .'&bioguide_id=' . $address->bioguide_id .'">' . $address->first_name .' '. $address->last_name . "</a></div>";
 				}								
 				if ($addy_checks['Image']){
-					$content .= '<img src="http://theunitedstates.io/images/congress/225x275/' . $address->bioguide_id . '.jpg">';				
+					$content .= '<img src="http://theunitedstates.io/images/congress/225x275/' . $address->bioguide_id . '.jpg">';
 				}	
 				if ($addy_checks['Affiliated Party']){
 					$content .= '<div>Party: ' . $address->party . '</div>';				
@@ -333,7 +349,12 @@ function find_congressperson_address_contents() {
 					$content .= '<div>Open Congress Email: ' . $address->oc_email . '</div>';					
 				}									
 				if ($addy_checks['Facebook Page Link']){
-					$content .= '<div>Facebook: <a href="https://www.facebook.com/' . $address->facebook_id . '" target="_blank">Facebook Page</a></div>';					
+				
+					if (!empty($congressface)) {
+						$content .= '<div>Facebook: <a href="https://www.facebook.com/' . $congressface . '" target="_blank">Facebook Page</a></div>';	
+					} else {
+					
+					}				
 				}					
 				if ($addy_checks['Phone Number']){
 					$content .= '<div>Phone: ' . $address->phone . '</div>';					
@@ -449,17 +470,18 @@ function find_congressperson_address() {
 	
 	$zipcode = isset($_GET["zip"]) ? $_GET["zip"] : '';
 	
-	$content = "<div class=\"find-zip row\">";
-	
-		$content .= '<div class="columns left large-6">';
-			$content .=  '<div class="subheader">Please enter your address to find your congressperson.</div>';  		
-			$content .=  '<input id="address-value" class="address-field large-12 columns" placeholder="Address" type="text" name="address" maxlength="200">';
-			$content .=  '<input id="city-value" class="city-field large-12 columns" placeholder="City" type="text" name="city" maxlength="100">'; 			 
-			$content .=  '<input id="state-value" class="state-field large-1 columns" placeholder="State" type="text" name="state" maxlength="2">'; 
-			$content .=  '<input id="zipcode-value" class="zipcode-field large-2 columns" placeholder="Zip" value="'. $zipcode .'" type="text" name="zip" maxlength="5">'; 						
-			$content .=  '<input type="submit" value="Search" class="address-button large-3 columns">'; 						
-		$content .= '</div>';
-	$content .= '</div>';		
+			$content = "<div class=\"find-zip row\">";
+				$content .=  '<div class="large-12 columns subheader">Please enter your address to find your congressperson.</div>';
+					$content .=  '<div class="large-9 columns">';
+					$content .=  '<div class="large-6 columns"><input id="address-value" class="address-field large-6 columns" placeholder="Address" type="text" name="address" maxlength="200"></div>';
+					$content .=  '<div class="large-6 columns"><input id="city-value" class="city-field large-6 columns" placeholder="City" type="text" name="city" maxlength="100"></div>';
+					$content .=  '<div class="large-6 columns"><input id="state-value" class="state-field large-6 columns" placeholder="State" type="text" name="state" maxlength="2"></div>';
+					$content .=  '<div class="large-6 columns"><input id="zipcode-value" class="zipcode-field large-6 columns" placeholder="Zip" value="'. $zipcode .'" type="text" name="zip" maxlength="5"></div>';
+				$content .=  '</div>';  														
+				$content .=  '<div class="large-3 columns">';
+					$content .=  '<input type="submit" value="Search" class="address-button">';
+				$content .=  '</div>';	 
+			$content .= '</div>';		
 		return $content;
 }
 
