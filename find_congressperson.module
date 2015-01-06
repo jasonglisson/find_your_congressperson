@@ -313,20 +313,12 @@ function find_congressperson_address_contents() {
 		$addy_checks = variable_get('congressperson_features');	
 			$content .= '<ul class="large-12 columns">';
 			
-			foreach ($addressresults as $address) {
+				if (isset($addressresults->district)) {
+					$district = $addressresults->district;
+					drupal_set_title(t($addressresults->state_name . ' ( ' . $district . ' )'));					
+				}			
 			
-			$congressface = $address->facebook_id;
-			
-/*
-				if ($addy_checks['Name']){
-					$content .=  '<li class="congressperson"><div><a href="' . $address->website . '" target="_blank">' . $address->first_name .' '. $address->last_name . "</a></div>";
-				}	
-*/		
-								
-				if (isset($address->district)) {
-					$district = $address->district;
-					drupal_set_title(t($address->state_name . ' ( ' . $district . ' )'));					
-				}	     
+			foreach ($addressresults as $address) {	     
 		       	       
 				if ($addy_checks['Name']){
 					$content .=  '<li class="congressperson"><div><a href="/congressperson?first_name=' . $address->first_name . '&last_name='. $address->last_name .'&bioguide_id=' . $address->bioguide_id .'">' . $address->first_name .' '. $address->last_name . "</a></div>";
@@ -350,8 +342,8 @@ function find_congressperson_address_contents() {
 				}									
 				if ($addy_checks['Facebook Page Link']){
 				
-					if (!empty($congressface)) {
-						$content .= '<div>Facebook: <a href="https://www.facebook.com/' . $congressface . '" target="_blank">Facebook Page</a></div>';	
+					if (!array_key_exists($address->facebook_id)) {
+						$content .= '<div>Facebook: <a href="https://www.facebook.com/' . $address->facebook_id . '" target="_blank">Facebook Page</a></div>';	
 					} else {
 					
 					}				
